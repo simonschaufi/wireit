@@ -5996,7 +5996,440 @@ inputEx.registerType("string", inputEx.StringField, [
 ]);
 
 })();
-(function () {
+(function() {
+
+/**
+ * Field that adds the email regexp for validation. Result is always lower case.
+ * @class inputEx.EmailField
+ * @extends inputEx.StringField
+ * @constructor
+ * @param {Object} options inputEx.Field options object
+ */
+inputEx.EmailField = function(options) {
+   inputEx.EmailField.superclass.constructor.call(this,options);
+};
+YAHOO.lang.extend(inputEx.EmailField, inputEx.StringField, {
+   
+   /**
+    * Set the email regexp and invalid message
+    * @param {Object} options Options object as passed to the constructor
+    */
+   setOptions: function(options) {
+      inputEx.EmailField.superclass.setOptions.call(this, options);
+
+      // Overwrite options
+      this.options.messages.invalid = inputEx.messages.invalidEmail;
+      this.options.regexp = inputEx.regexps.email;
+		
+		// Validate the domain name ( false by default )
+		this.options.fixdomain = (YAHOO.lang.isUndefined(options.fixdomain) ? false : !!options.fixdomain);
+   },
+   
+	validateDomain : function() {
+		
+		var i, j, val, domain, domainList, domainListLength, groupDomain, groupDomainLength;
+		
+		val = this.getValue();
+		domain = val.split('@')[1];
+		
+		// List of bad emails (only the first one in each array is the valid one)
+		domainList = [
+		
+			// gmail.com
+			["gmail.com","gmail.com.br","_gmail.com","g-mail.com","g.mail.com","g_mail.com","gamail.com","gamil.com","gemail.com","ggmail.com","gimail.com","gmai.com","gmail.cim","gmail.co","gmaill.com","gmain.com","gmaio.com","gmal.com","gmali.com","gmeil.com","gmial.com","gmil.com","gtmail.com","igmail.com","gmail.fr"],
+		
+			// hotmail.co.uk
+			["hotmail.co.uk","hotmail.com.uk"],
+		
+			// hotmail.com
+			["hotmail.com","hotmail.com.br","hotmail.br","0hotmail.com","8hotmail.com","_hotmail.com","ahotmail.com","ghotmail.com","gotmail.com","hatmail.com","hhotmail.com","ho0tmail.com","hogmail.com","hoimail.com","hoitmail.com","homail.com","homtail.com","hootmail.com","hopmail.com","hoptmail.com","hormail.com","hot.mail.com","hot_mail.com","hotail.com","hotamail.com","hotamil.com","hotemail.com","hotimail.com","hotlmail.com","hotmaail.com","hotmael.com","hotmai.com","hotmaial.com","hotmaiil.com","hotmail.acom","hotmail.bom","hotmail.ccom","hotmail.cm","hotmail.co","hotmail.coml","hotmail.comm","hotmail.con","hotmail.coom","hotmail.copm","hotmail.cpm","hotmail.lcom","hotmail.ocm","hotmail.om","hotmail.xom","hotmail2.com","hotmail_.com","hotmailc.com","hotmaill.com","hotmailo.com","hotmaio.com","hotmaiol.com","hotmais.com","hotmal.com","hotmall.com","hotmamil.com","hotmaol.com","hotmayl.com","hotmeil.com","hotmial.com","hotmil.com","hotmmail.com","hotmnail.com","hotmsil.com","hotnail.com","hotomail.com","hottmail.com","hotymail.com","hoymail.com","hptmail.com","htmail.com","htomail.com","ohotmail.com","otmail.com","rotmail.com","shotmail.com","hotmain.com"],
+		
+			// hotmail.fr
+			["hotmail.fr","hotmail.ffr","hotmail.frr","hotmail.fr.br","hotmail.br","0hotmail.fr","8hotmail.fr","_hotmail.fr","ahotmail.fr","ghotmail.fr","gotmail.fr","hatmail.fr","hhotmail.fr","ho0tmail.fr","hogmail.fr","hoimail.fr","hoitmail.fr","homail.fr","homtail.fr","hootmail.fr","hopmail.fr","hoptmail.fr","hormail.fr","hot.mail.fr","hot_mail.fr","hotail.fr","hotamail.fr","hotamil.fr","hotemail.fr","hotimail.fr","hotlmail.fr","hotmaail.fr","hotmael.fr","hotmai.fr","hotmaial.fr","hotmaiil.fr","hotmail.frl","hotmail.frm","hotmail2.fr","hotmail_.fr","hotmailc.fr","hotmaill.fr","hotmailo.fr","hotmaio.fr","hotmaiol.fr","hotmais.fr","hotmal.fr","hotmall.fr","hotmamil.fr","hotmaol.fr","hotmayl.fr","hotmeil.fr","hotmial.fr","hotmil.fr","hotmmail.fr","hotmnail.fr","hotmsil.fr","hotnail.fr","hotomail.fr","hottmail.fr","hotymail.fr","hoymail.fr","hptmail.fr","htmail.fr","htomail.fr","ohotmail.fr","otmail.fr","rotmail.fr","shotmail.fr","hotmain.fr"],
+		
+			// yahoo.co.in
+			["yahoo.co.in","yaho.co.in","yahoo.co.cn","yahoo.co.n","yahoo.co.on","yahoo.coin","yahoo.com.in","yahoo.cos.in","yahoo.oc.in","yaoo.co.in","yhoo.co.in"],
+		
+			// yahoo.com.br
+			["yahoo.com.br","1yahoo.com.br","5yahoo.com.br","_yahoo.com.br","ayhoo.com.br","tahoo.com.br","uahoo.com.br","yagoo.com.br","yahho.com.br","yaho.com.br","yahoo.cm.br","yahoo.co.br","yahoo.com.ar","yahoo.com.b","yahoo.com.be","yahoo.com.ber","yahoo.com.bl","yahoo.com.brr","yahoo.com.brv","yahoo.com.bt","yahoo.com.nr","yahoo.coml.br","yahoo.con.br","yahoo.om.br","yahool.com.br","yahooo.com.br","yahoou.com.br","yaoo.com.br","yaroo.com.br","yhaoo.com.br","yhoo.com.br","yuhoo.com.br"],
+		
+			// yahoo.com
+			["yahoo.com","yahoomail.com","_yahoo.com","ahoo.com","ayhoo.com","eyahoo.com","hahoo.com","sahoo.com","yahho.com","yaho.com","yahol.com","yahoo.co","yahoo.con","yahoo.vom","yahoo0.com","yahoo1.com","yahool.com","yahooo.com","yahoou.com","yahoow.com","yahopo.com","yaloo.com","yaoo.com","yaroo.com","yayoo.com","yhaoo.com","yhoo.com","yohoo.com"],
+		
+			// yahoo.fr
+			["yahoo.fr","yahoomail.fr","_yahoo.fr","ahoo.fr","ayhoo.fr","eyahoo.fr","hahoo.fr","sahoo.fr","yahho.fr","yaho.fr","yahol.fr","yahoo.co","yahoo.con","yahoo.vom","yahoo0.fr","yahoo1.fr","yahool.fr","yahooo.fr","yahoou.fr","yahoow.fr","yahopo.fr","yaloo.fr","yaoo.fr","yaroo.fr","yayoo.fr","yhaoo.fr","yhoo.fr","yohoo.fr"],
+		
+			// wanadoo.fr
+			["wanadoo.fr","wanadoo.frr","wanadoo.ffr","wanado.fr","wanadou.fr","wanadop.fr","wandoo.fr","wanaoo.fr","wannadoo.fr","wanadoo.com","wananadoo.fr","wanadoo.fe","wanaddo.fr","wanadoo.orange","waqnadoo.fr","wandaoo.fr","wannado.fr"],
+			
+			// msn.com
+			["msn.com","mns.com","msn.co"],
+			
+			// aol.com
+			["aol.com","aoel.com","aol.co"]
+		];
+		
+		// Loop 1
+		for(i=0, domainListLength = domainList.length; i<domainListLength; i++ ) {
+			groupDomain = domainList[i];
+			
+			// Loop 2
+			for(j=0, groupDomainLength = groupDomain.length; j<groupDomainLength; j++ ) {
+
+				// First domain of array
+				if( groupDomain.indexOf(domain) === 0) {
+					
+					// If domain matches the first value of the array it means its valid
+					if ( domain === groupDomain[j] ) {
+						return true;
+					}
+				}
+				else if ( domain === groupDomain[j] ) {
+					var linkId = YAHOO.util.Dom.generateId();
+					var that = this;
+					
+					// Add a listener to the link to allow the user to replace his bad email by clicking the link
+					YAHOO.util.Event.addListener(linkId, 'click', function(e){
+						YAHOO.util.Event.stopEvent(e);
+						var reg = new RegExp(domain, "i");
+						var fixedVal = val.replace(reg, groupDomain[0]);
+						that.setValue( fixedVal );
+					});
+					
+					// Display the message with the link
+					this.options.messages.invalid = inputEx.messages.didYouMeant+"<a href='' id='"+linkId+"' style='color:blue;'>@"+groupDomain[0]+" ?</a>";
+					
+					// field isnt valid
+					return false;
+				}
+			}
+		}
+		
+		// field is valid
+		return true;
+	},
+	
+   validate: function() {
+	   var result = inputEx.EmailField.superclass.validate.call(this);
+		
+		// If we want the domain validation
+		if ( !!this.options.fixdomain ) {
+	   	this.options.messages.invalid = inputEx.messages.invalidEmail;
+			return result && this.validateDomain();
+		} else {
+			return result;
+		}
+   },
+
+   /**
+    * Set the value to lower case since email have no case
+    * @return {String} The email string
+    */
+   getValue: function() {
+      
+      var value;
+      
+      value = inputEx.EmailField.superclass.getValue.call(this);
+      
+      return inputEx.removeAccents(value.toLowerCase());
+   }
+
+});
+   
+// Specific message for the email field
+inputEx.messages.invalidEmail = "Invalid email, ex: sample@test.com";
+
+inputEx.messages.didYouMeant = "Did you mean : ";
+
+// Register this class as "email" type
+inputEx.registerType("email", inputEx.EmailField, []);
+
+})();(function() {
+
+   var Event = YAHOO.util.Event;
+
+/**
+ * Create a textarea input
+ * @class inputEx.Textarea
+ * @extends inputEx.Field
+ * @constructor
+ * @param {Object} options Added options:
+ * <ul>
+ *	   <li>rows: rows attribute</li>
+ *	   <li>cols: cols attribute</li>
+ * </ul>
+ */
+inputEx.Textarea = function(options) {
+	inputEx.Textarea.superclass.constructor.call(this,options);
+};
+YAHOO.lang.extend(inputEx.Textarea, inputEx.StringField, {
+
+   /**
+    * Set the specific options (rows and cols)
+    * @param {Object} options Options object as passed to the constructor
+    */
+   setOptions: function(options) {
+      inputEx.Textarea.superclass.setOptions.call(this, options);
+      this.options.rows = options.rows || 6;
+      this.options.cols = options.cols || 23;
+      
+      // warning : readonly option doesn't work on IE < 8
+      this.options.readonly = !!options.readonly;
+   },
+   
+   /**
+    * Render an 'INPUT' DOM node
+    */
+   renderComponent: function() {
+      
+      // This element wraps the input node in a float: none div
+      this.wrapEl = inputEx.cn('div', {className: 'inputEx-StringField-wrapper'});
+      
+      // Attributes of the input field
+      var attributes = {};
+      attributes.id = this.divEl.id?this.divEl.id+'-field':YAHOO.util.Dom.generateId();
+      attributes.rows = this.options.rows;
+      attributes.cols = this.options.cols;
+      if(this.options.name) attributes.name = this.options.name;
+      if(this.options.readonly) attributes.readonly = 'readonly';
+      
+      //if(this.options.maxLength) attributes.maxLength = this.options.maxLength;
+   
+      // Create the node
+      this.el = inputEx.cn('textarea', attributes, null, this.options.value);
+      
+      // Append it to the main element
+      this.wrapEl.appendChild(this.el);
+      this.fieldContainer.appendChild(this.wrapEl);
+   },
+   
+	/**
+    * Uses the optional regexp to validate the field value
+    */
+   validate: function() { 
+      var previous = inputEx.Textarea.superclass.validate.call(this);
+      
+      // emulate maxLength property for textarea
+      //   -> user can still type but field is invalid
+      if (this.options.maxLength) {
+         previous = previous && this.getValue().length <= this.options.maxLength;
+      }
+      
+      return previous;
+   },
+   
+   /**
+    * Add the minLength string message handling
+    */
+    getStateString: function(state) {
+	   if(state == inputEx.stateInvalid && this.options.minLength && this.el.value.length < this.options.minLength) {  
+	      return inputEx.messages.stringTooShort[0]+this.options.minLength+inputEx.messages.stringTooShort[1];
+	   
+	   // Add message too long
+      } else if (state == inputEx.stateInvalid && this.options.maxLength && this.el.value.length > this.options.maxLength) {
+         return inputEx.messages.stringTooLong[0]+this.options.maxLength+inputEx.messages.stringTooLong[1];
+      }
+	   return inputEx.Textarea.superclass.getStateString.call(this, state);
+	},
+	
+	
+	/**
+	 * Insert text at the current cursor position
+	 * @param {String} text Text to insert
+	 */
+	insert: function(text) {
+		
+		var sel, startPos, endPos;
+		
+		//IE support
+		if (document.selection) {
+			this.el.focus();
+			sel = document.selection.createRange();
+			sel.text = text;
+		}
+		//Mozilla/Firefox/Netscape 7+ support
+		else if (this.el.selectionStart || this.el.selectionStart == '0') {
+			startPos = this.el.selectionStart;
+			endPos = this.el.selectionEnd;
+			this.el.value = this.el.value.substring(0, startPos)+ text+ this.el.value.substring(endPos, this.el.value.length);
+		} 
+		else {
+			this.el.value += text;
+		}	
+	}
+
+});
+
+inputEx.messages.stringTooLong = ["This field should contain at most "," numbers or characters"];
+
+// Register this class as "text" type
+inputEx.registerType("text", inputEx.Textarea, [
+   { type: 'integer', label: 'Rows',  name: 'rows', value: 6 },
+   { type: 'integer', label: 'Cols', name: 'cols', value: 23 }
+]);
+
+})();(function() {
+
+   var lang = YAHOO.lang;
+
+/**
+ * Adds an url regexp, and display the favicon at this url
+ * @class inputEx.UrlField
+ * @extends inputEx.StringField
+ * @constructor
+ * @param {Object} options inputEx.Field options object
+ * <ul>
+ *   <li>favicon: boolean whether the domain favicon.ico should be displayed or not (default is true, except for https)</li>
+ * </ul>
+ */
+inputEx.UrlField = function(options) {
+   inputEx.UrlField.superclass.constructor.call(this,options);
+};
+
+lang.extend(inputEx.UrlField, inputEx.StringField, {
+
+   /**
+    * Adds the invalid Url message
+    * @param {Object} options Options object as passed to the constructor
+    */
+   setOptions: function(options) {
+      inputEx.UrlField.superclass.setOptions.call(this, options);
+
+      this.options.className = options.className ? options.className : "inputEx-Field inputEx-UrlField";
+      this.options.messages.invalid = inputEx.messages.invalidUrl;
+      this.options.favicon = lang.isUndefined(options.favicon) ? (("https:" == document.location.protocol) ? false : true) : options.favicon;
+      this.options.size = options.size || 50;
+
+      // validate with url regexp
+      this.options.regexp = inputEx.regexps.url;
+   },
+
+   /**
+    * Adds a img tag before the field to display the favicon
+    */
+   render: function() {
+      inputEx.UrlField.superclass.render.call(this);
+      this.el.size = this.options.size;
+
+      if(!this.options.favicon) {
+         YAHOO.util.Dom.addClass(this.el, 'nofavicon');
+      }
+
+      // Create the favicon image tag
+      if(this.options.favicon) {
+         this.favicon = inputEx.cn('img', {src: inputEx.spacerUrl});
+         this.fieldContainer.insertBefore(this.favicon,this.fieldContainer.childNodes[0]);
+
+         // focus field when clicking on favicon
+         YAHOO.util.Event.addListener(this.favicon,"click",function(){this.focus();},this,true);
+      }
+   },
+
+   setClassFromState: function() {
+      inputEx.UrlField.superclass.setClassFromState.call(this);
+
+      if(this.options.favicon) {
+         // try to update with url only if valid url (else pass null to display inputEx.spacerUrl)
+         this.updateFavicon((this.previousState == inputEx.stateValid) ? this.getValue() : null);
+      }
+   },
+
+
+   updateFavicon: function(url) {
+      var newSrc = url ? url.match(/https?:\/\/[^\/]*/)+'/favicon.ico' : inputEx.spacerUrl;
+      if(newSrc != this.favicon.src) {
+
+         // Hide the favicon
+         inputEx.sn(this.favicon, null, {visibility: 'hidden'});
+
+         // Change the src
+         this.favicon.src = newSrc;
+
+         // Set the timer to launch displayFavicon in 1s
+         if(this.timer) { clearTimeout(this.timer); }
+         var that = this;
+         this.timer = setTimeout(function(){that.displayFavicon();}, 1000);
+      }
+   },
+
+   /**
+    * Display the favicon if the icon was found (use of the naturalWidth property)
+    */
+   displayFavicon: function() {
+      inputEx.sn(this.favicon, null, {visibility: (this.favicon.naturalWidth!=0) ? 'visible' : 'hidden'});
+   }
+
+
+});
+
+inputEx.messages.invalidUrl = "Invalid URL, ex: http://www.test.com";
+
+
+// Register this class as "url" type
+inputEx.registerType("url", inputEx.UrlField, [
+   { type: 'boolean', label: 'Display favicon', name:'favicon', value: true}
+]);
+
+})();(function() {
+
+/**
+ * Create a hidden input, inherits from inputEx.Field
+ * @class inputEx.HiddenField
+ * @extends inputEx.Field
+ * @constructor
+ * @param {Object} options inputEx.Field options object
+ */
+inputEx.HiddenField = function(options) {
+	inputEx.HiddenField.superclass.constructor.call(this,options);
+};
+
+YAHOO.lang.extend(inputEx.HiddenField, inputEx.Field, {
+   
+   /**
+    * Doesn't render much...
+    */
+   render: function() {
+      this.type = inputEx.HiddenField;
+	   this.divEl = inputEx.cn('div', null, {display: 'none'});
+	   
+	   this.el = inputEx.cn('input', {type: 'hidden'});
+	   this.rawValue = ''; // initialize the rawValue with '' (default value of a hidden field)
+	
+	   if(this.options.name) this.el.name = this.options.name;
+	   this.divEl.appendChild(this.el);
+   },
+
+   /**
+    * Stores the typed value in a local variable, and store the value in the hidden input (cast as string by the input)
+    * @param {Any} val The value to set
+    * @param {boolean} [sendUpdatedEvt] (optional) Wether this setValue should fire the updatedEvt or not (default is true, pass false to NOT send the event)
+    */
+   setValue: function(val, sendUpdatedEvt) {
+	
+	   // store in the hidden input (so the value is sent as "string" if HTML form submit)
+      this.el.value = val;
+
+      // store the value in a variable, so getValue can return it without type casting
+      this.rawValue = val;
+
+      // Call Field.setValue to set class and fire updated event
+		inputEx.HiddenField.superclass.setValue.call(this,val, sendUpdatedEvt);
+   },
+
+   /**
+    * Get the previously stored value (respect the datatype of the value)
+    * @return {Any} the previously stored value
+    */
+   getValue: function() {
+      return this.rawValue;
+   }
+
+});
+   
+// Register this class as "hidden" type
+inputEx.registerType("hidden", inputEx.HiddenField);
+
+})();(function () {
 	
 	// shortcuts
 	var lang = YAHOO.lang;
@@ -6489,256 +6922,6 @@ inputEx.registerType("string", inputEx.StringField, [
 	]);
 
 }());(function() {
-
-/**
- * Field that adds the email regexp for validation. Result is always lower case.
- * @class inputEx.EmailField
- * @extends inputEx.StringField
- * @constructor
- * @param {Object} options inputEx.Field options object
- */
-inputEx.EmailField = function(options) {
-   inputEx.EmailField.superclass.constructor.call(this,options);
-};
-YAHOO.lang.extend(inputEx.EmailField, inputEx.StringField, {
-   
-   /**
-    * Set the email regexp and invalid message
-    * @param {Object} options Options object as passed to the constructor
-    */
-   setOptions: function(options) {
-      inputEx.EmailField.superclass.setOptions.call(this, options);
-
-      // Overwrite options
-      this.options.messages.invalid = inputEx.messages.invalidEmail;
-      this.options.regexp = inputEx.regexps.email;
-		
-		// Validate the domain name ( false by default )
-		this.options.fixdomain = (YAHOO.lang.isUndefined(options.fixdomain) ? false : !!options.fixdomain);
-   },
-   
-	validateDomain : function() {
-		
-		var i, j, val, domain, domainList, domainListLength, groupDomain, groupDomainLength;
-		
-		val = this.getValue();
-		domain = val.split('@')[1];
-		
-		// List of bad emails (only the first one in each array is the valid one)
-		domainList = [
-		
-			// gmail.com
-			["gmail.com","gmail.com.br","_gmail.com","g-mail.com","g.mail.com","g_mail.com","gamail.com","gamil.com","gemail.com","ggmail.com","gimail.com","gmai.com","gmail.cim","gmail.co","gmaill.com","gmain.com","gmaio.com","gmal.com","gmali.com","gmeil.com","gmial.com","gmil.com","gtmail.com","igmail.com","gmail.fr"],
-		
-			// hotmail.co.uk
-			["hotmail.co.uk","hotmail.com.uk"],
-		
-			// hotmail.com
-			["hotmail.com","hotmail.com.br","hotmail.br","0hotmail.com","8hotmail.com","_hotmail.com","ahotmail.com","ghotmail.com","gotmail.com","hatmail.com","hhotmail.com","ho0tmail.com","hogmail.com","hoimail.com","hoitmail.com","homail.com","homtail.com","hootmail.com","hopmail.com","hoptmail.com","hormail.com","hot.mail.com","hot_mail.com","hotail.com","hotamail.com","hotamil.com","hotemail.com","hotimail.com","hotlmail.com","hotmaail.com","hotmael.com","hotmai.com","hotmaial.com","hotmaiil.com","hotmail.acom","hotmail.bom","hotmail.ccom","hotmail.cm","hotmail.co","hotmail.coml","hotmail.comm","hotmail.con","hotmail.coom","hotmail.copm","hotmail.cpm","hotmail.lcom","hotmail.ocm","hotmail.om","hotmail.xom","hotmail2.com","hotmail_.com","hotmailc.com","hotmaill.com","hotmailo.com","hotmaio.com","hotmaiol.com","hotmais.com","hotmal.com","hotmall.com","hotmamil.com","hotmaol.com","hotmayl.com","hotmeil.com","hotmial.com","hotmil.com","hotmmail.com","hotmnail.com","hotmsil.com","hotnail.com","hotomail.com","hottmail.com","hotymail.com","hoymail.com","hptmail.com","htmail.com","htomail.com","ohotmail.com","otmail.com","rotmail.com","shotmail.com","hotmain.com"],
-		
-			// hotmail.fr
-			["hotmail.fr","hotmail.ffr","hotmail.frr","hotmail.fr.br","hotmail.br","0hotmail.fr","8hotmail.fr","_hotmail.fr","ahotmail.fr","ghotmail.fr","gotmail.fr","hatmail.fr","hhotmail.fr","ho0tmail.fr","hogmail.fr","hoimail.fr","hoitmail.fr","homail.fr","homtail.fr","hootmail.fr","hopmail.fr","hoptmail.fr","hormail.fr","hot.mail.fr","hot_mail.fr","hotail.fr","hotamail.fr","hotamil.fr","hotemail.fr","hotimail.fr","hotlmail.fr","hotmaail.fr","hotmael.fr","hotmai.fr","hotmaial.fr","hotmaiil.fr","hotmail.frl","hotmail.frm","hotmail2.fr","hotmail_.fr","hotmailc.fr","hotmaill.fr","hotmailo.fr","hotmaio.fr","hotmaiol.fr","hotmais.fr","hotmal.fr","hotmall.fr","hotmamil.fr","hotmaol.fr","hotmayl.fr","hotmeil.fr","hotmial.fr","hotmil.fr","hotmmail.fr","hotmnail.fr","hotmsil.fr","hotnail.fr","hotomail.fr","hottmail.fr","hotymail.fr","hoymail.fr","hptmail.fr","htmail.fr","htomail.fr","ohotmail.fr","otmail.fr","rotmail.fr","shotmail.fr","hotmain.fr"],
-		
-			// yahoo.co.in
-			["yahoo.co.in","yaho.co.in","yahoo.co.cn","yahoo.co.n","yahoo.co.on","yahoo.coin","yahoo.com.in","yahoo.cos.in","yahoo.oc.in","yaoo.co.in","yhoo.co.in"],
-		
-			// yahoo.com.br
-			["yahoo.com.br","1yahoo.com.br","5yahoo.com.br","_yahoo.com.br","ayhoo.com.br","tahoo.com.br","uahoo.com.br","yagoo.com.br","yahho.com.br","yaho.com.br","yahoo.cm.br","yahoo.co.br","yahoo.com.ar","yahoo.com.b","yahoo.com.be","yahoo.com.ber","yahoo.com.bl","yahoo.com.brr","yahoo.com.brv","yahoo.com.bt","yahoo.com.nr","yahoo.coml.br","yahoo.con.br","yahoo.om.br","yahool.com.br","yahooo.com.br","yahoou.com.br","yaoo.com.br","yaroo.com.br","yhaoo.com.br","yhoo.com.br","yuhoo.com.br"],
-		
-			// yahoo.com
-			["yahoo.com","yahoomail.com","_yahoo.com","ahoo.com","ayhoo.com","eyahoo.com","hahoo.com","sahoo.com","yahho.com","yaho.com","yahol.com","yahoo.co","yahoo.con","yahoo.vom","yahoo0.com","yahoo1.com","yahool.com","yahooo.com","yahoou.com","yahoow.com","yahopo.com","yaloo.com","yaoo.com","yaroo.com","yayoo.com","yhaoo.com","yhoo.com","yohoo.com"],
-		
-			// yahoo.fr
-			["yahoo.fr","yahoomail.fr","_yahoo.fr","ahoo.fr","ayhoo.fr","eyahoo.fr","hahoo.fr","sahoo.fr","yahho.fr","yaho.fr","yahol.fr","yahoo.co","yahoo.con","yahoo.vom","yahoo0.fr","yahoo1.fr","yahool.fr","yahooo.fr","yahoou.fr","yahoow.fr","yahopo.fr","yaloo.fr","yaoo.fr","yaroo.fr","yayoo.fr","yhaoo.fr","yhoo.fr","yohoo.fr"],
-		
-			// wanadoo.fr
-			["wanadoo.fr","wanadoo.frr","wanadoo.ffr","wanado.fr","wanadou.fr","wanadop.fr","wandoo.fr","wanaoo.fr","wannadoo.fr","wanadoo.com","wananadoo.fr","wanadoo.fe","wanaddo.fr","wanadoo.orange","waqnadoo.fr","wandaoo.fr","wannado.fr"],
-			
-			// msn.com
-			["msn.com","mns.com","msn.co"],
-			
-			// aol.com
-			["aol.com","aoel.com","aol.co"]
-		];
-		
-		// Loop 1
-		for(i=0, domainListLength = domainList.length; i<domainListLength; i++ ) {
-			groupDomain = domainList[i];
-			
-			// Loop 2
-			for(j=0, groupDomainLength = groupDomain.length; j<groupDomainLength; j++ ) {
-
-				// First domain of array
-				if( groupDomain.indexOf(domain) === 0) {
-					
-					// If domain matches the first value of the array it means its valid
-					if ( domain === groupDomain[j] ) {
-						return true;
-					}
-				}
-				else if ( domain === groupDomain[j] ) {
-					var linkId = YAHOO.util.Dom.generateId();
-					var that = this;
-					
-					// Add a listener to the link to allow the user to replace his bad email by clicking the link
-					YAHOO.util.Event.addListener(linkId, 'click', function(e){
-						YAHOO.util.Event.stopEvent(e);
-						var reg = new RegExp(domain, "i");
-						var fixedVal = val.replace(reg, groupDomain[0]);
-						that.setValue( fixedVal );
-					});
-					
-					// Display the message with the link
-					this.options.messages.invalid = inputEx.messages.didYouMeant+"<a href='' id='"+linkId+"' style='color:blue;'>@"+groupDomain[0]+" ?</a>";
-					
-					// field isnt valid
-					return false;
-				}
-			}
-		}
-		
-		// field is valid
-		return true;
-	},
-	
-   validate: function() {
-	   var result = inputEx.EmailField.superclass.validate.call(this);
-		
-		// If we want the domain validation
-		if ( !!this.options.fixdomain ) {
-	   	this.options.messages.invalid = inputEx.messages.invalidEmail;
-			return result && this.validateDomain();
-		} else {
-			return result;
-		}
-   },
-
-   /**
-    * Set the value to lower case since email have no case
-    * @return {String} The email string
-    */
-   getValue: function() {
-      
-      var value;
-      
-      value = inputEx.EmailField.superclass.getValue.call(this);
-      
-      return inputEx.removeAccents(value.toLowerCase());
-   }
-
-});
-   
-// Specific message for the email field
-inputEx.messages.invalidEmail = "Invalid email, ex: sample@test.com";
-
-inputEx.messages.didYouMeant = "Did you mean : ";
-
-// Register this class as "email" type
-inputEx.registerType("email", inputEx.EmailField, []);
-
-})();(function() {
-
-   var lang = YAHOO.lang;
-
-/**
- * Adds an url regexp, and display the favicon at this url
- * @class inputEx.UrlField
- * @extends inputEx.StringField
- * @constructor
- * @param {Object} options inputEx.Field options object
- * <ul>
- *   <li>favicon: boolean whether the domain favicon.ico should be displayed or not (default is true, except for https)</li>
- * </ul>
- */
-inputEx.UrlField = function(options) {
-   inputEx.UrlField.superclass.constructor.call(this,options);
-};
-
-lang.extend(inputEx.UrlField, inputEx.StringField, {
-
-   /**
-    * Adds the invalid Url message
-    * @param {Object} options Options object as passed to the constructor
-    */
-   setOptions: function(options) {
-      inputEx.UrlField.superclass.setOptions.call(this, options);
-
-      this.options.className = options.className ? options.className : "inputEx-Field inputEx-UrlField";
-      this.options.messages.invalid = inputEx.messages.invalidUrl;
-      this.options.favicon = lang.isUndefined(options.favicon) ? (("https:" == document.location.protocol) ? false : true) : options.favicon;
-      this.options.size = options.size || 50;
-
-      // validate with url regexp
-      this.options.regexp = inputEx.regexps.url;
-   },
-
-   /**
-    * Adds a img tag before the field to display the favicon
-    */
-   render: function() {
-      inputEx.UrlField.superclass.render.call(this);
-      this.el.size = this.options.size;
-
-      if(!this.options.favicon) {
-         YAHOO.util.Dom.addClass(this.el, 'nofavicon');
-      }
-
-      // Create the favicon image tag
-      if(this.options.favicon) {
-         this.favicon = inputEx.cn('img', {src: inputEx.spacerUrl});
-         this.fieldContainer.insertBefore(this.favicon,this.fieldContainer.childNodes[0]);
-
-         // focus field when clicking on favicon
-         YAHOO.util.Event.addListener(this.favicon,"click",function(){this.focus();},this,true);
-      }
-   },
-
-   setClassFromState: function() {
-      inputEx.UrlField.superclass.setClassFromState.call(this);
-
-      if(this.options.favicon) {
-         // try to update with url only if valid url (else pass null to display inputEx.spacerUrl)
-         this.updateFavicon((this.previousState == inputEx.stateValid) ? this.getValue() : null);
-      }
-   },
-
-
-   updateFavicon: function(url) {
-      var newSrc = url ? url.match(/https?:\/\/[^\/]*/)+'/favicon.ico' : inputEx.spacerUrl;
-      if(newSrc != this.favicon.src) {
-
-         // Hide the favicon
-         inputEx.sn(this.favicon, null, {visibility: 'hidden'});
-
-         // Change the src
-         this.favicon.src = newSrc;
-
-         // Set the timer to launch displayFavicon in 1s
-         if(this.timer) { clearTimeout(this.timer); }
-         var that = this;
-         this.timer = setTimeout(function(){that.displayFavicon();}, 1000);
-      }
-   },
-
-   /**
-    * Display the favicon if the icon was found (use of the naturalWidth property)
-    */
-   displayFavicon: function() {
-      inputEx.sn(this.favicon, null, {visibility: (this.favicon.naturalWidth!=0) ? 'visible' : 'hidden'});
-   }
-
-
-});
-
-inputEx.messages.invalidUrl = "Invalid URL, ex: http://www.test.com";
-
-
-// Register this class as "url" type
-inputEx.registerType("url", inputEx.UrlField, [
-   { type: 'boolean', label: 'Display favicon', name:'favicon', value: true}
-]);
-
-})();(function() {
 	
    var lang = YAHOO.lang, Event = YAHOO.util.Event, Dom = YAHOO.util.Dom;
 	
@@ -7349,130 +7532,6 @@ inputEx.registerType("boolean", inputEx.CheckBox, [
    {type: 'string', label: 'Right Label', name: 'rightLabel'}
 ]);
 	
-})();(function() {
-
-   var Event = YAHOO.util.Event;
-
-/**
- * Create a textarea input
- * @class inputEx.Textarea
- * @extends inputEx.Field
- * @constructor
- * @param {Object} options Added options:
- * <ul>
- *	   <li>rows: rows attribute</li>
- *	   <li>cols: cols attribute</li>
- * </ul>
- */
-inputEx.Textarea = function(options) {
-	inputEx.Textarea.superclass.constructor.call(this,options);
-};
-YAHOO.lang.extend(inputEx.Textarea, inputEx.StringField, {
-
-   /**
-    * Set the specific options (rows and cols)
-    * @param {Object} options Options object as passed to the constructor
-    */
-   setOptions: function(options) {
-      inputEx.Textarea.superclass.setOptions.call(this, options);
-      this.options.rows = options.rows || 6;
-      this.options.cols = options.cols || 23;
-      
-      // warning : readonly option doesn't work on IE < 8
-      this.options.readonly = !!options.readonly;
-   },
-   
-   /**
-    * Render an 'INPUT' DOM node
-    */
-   renderComponent: function() {
-      
-      // This element wraps the input node in a float: none div
-      this.wrapEl = inputEx.cn('div', {className: 'inputEx-StringField-wrapper'});
-      
-      // Attributes of the input field
-      var attributes = {};
-      attributes.id = this.divEl.id?this.divEl.id+'-field':YAHOO.util.Dom.generateId();
-      attributes.rows = this.options.rows;
-      attributes.cols = this.options.cols;
-      if(this.options.name) attributes.name = this.options.name;
-      if(this.options.readonly) attributes.readonly = 'readonly';
-      
-      //if(this.options.maxLength) attributes.maxLength = this.options.maxLength;
-   
-      // Create the node
-      this.el = inputEx.cn('textarea', attributes, null, this.options.value);
-      
-      // Append it to the main element
-      this.wrapEl.appendChild(this.el);
-      this.fieldContainer.appendChild(this.wrapEl);
-   },
-   
-	/**
-    * Uses the optional regexp to validate the field value
-    */
-   validate: function() { 
-      var previous = inputEx.Textarea.superclass.validate.call(this);
-      
-      // emulate maxLength property for textarea
-      //   -> user can still type but field is invalid
-      if (this.options.maxLength) {
-         previous = previous && this.getValue().length <= this.options.maxLength;
-      }
-      
-      return previous;
-   },
-   
-   /**
-    * Add the minLength string message handling
-    */
-    getStateString: function(state) {
-	   if(state == inputEx.stateInvalid && this.options.minLength && this.el.value.length < this.options.minLength) {  
-	      return inputEx.messages.stringTooShort[0]+this.options.minLength+inputEx.messages.stringTooShort[1];
-	   
-	   // Add message too long
-      } else if (state == inputEx.stateInvalid && this.options.maxLength && this.el.value.length > this.options.maxLength) {
-         return inputEx.messages.stringTooLong[0]+this.options.maxLength+inputEx.messages.stringTooLong[1];
-      }
-	   return inputEx.Textarea.superclass.getStateString.call(this, state);
-	},
-	
-	
-	/**
-	 * Insert text at the current cursor position
-	 * @param {String} text Text to insert
-	 */
-	insert: function(text) {
-		
-		var sel, startPos, endPos;
-		
-		//IE support
-		if (document.selection) {
-			this.el.focus();
-			sel = document.selection.createRange();
-			sel.text = text;
-		}
-		//Mozilla/Firefox/Netscape 7+ support
-		else if (this.el.selectionStart || this.el.selectionStart == '0') {
-			startPos = this.el.selectionStart;
-			endPos = this.el.selectionEnd;
-			this.el.value = this.el.value.substring(0, startPos)+ text+ this.el.value.substring(endPos, this.el.value.length);
-		} 
-		else {
-			this.el.value += text;
-		}	
-	}
-
-});
-
-inputEx.messages.stringTooLong = ["This field should contain at most "," numbers or characters"];
-
-// Register this class as "text" type
-inputEx.registerType("text", inputEx.Textarea, [
-   { type: 'integer', label: 'Rows',  name: 'rows', value: 6 },
-   { type: 'integer', label: 'Cols', name: 'cols', value: 23 }
-]);
-
 })();(function() {
 
    var lang = YAHOO.lang, Event = YAHOO.util.Event, Dom = YAHOO.util.Dom, CSS_PREFIX = 'inputEx-InPlaceEdit-';

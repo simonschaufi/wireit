@@ -52,7 +52,7 @@ lang.extend(WireIt.WiringEditor, WireIt.BaseEditor, {
 	
 
 	    this.options.layerOptions.parentEl = layerOptions.parentEl ? layerOptions.parentEl : Dom.get('center');
-	    this.options.layerOptions.layerMap = YAHOO.lang.isUndefined(layerOptions.layerMap) ? true : layerOptions.layerMap;
+	    this.options.layerOptions.layerMap = YAHOO.lang.isUndefined(layerOptions.layerMap) ? false : layerOptions.layerMap;
 	    this.options.layerOptions.layerMapOptions = layerOptions.layerMapOptions || { parentEl: 'layerMap' };
 
 	 	 this.options.modulesAccordionViewParams = YAHOO.lang.merge({
